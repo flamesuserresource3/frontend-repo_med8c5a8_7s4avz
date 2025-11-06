@@ -8,14 +8,17 @@ function App() {
   const [activeTab, setActiveTab] = useState('login');
   const [nim, setNim] = useState('');
   const [hasVoted, setHasVoted] = useState(false);
+  const [loginChecked, setLoginChecked] = useState(false);
   const canVote = useMemo(() => Boolean(nim) && !hasVoted, [nim, hasVoted]);
 
-  const handleLoginSuccess = (nimValue) => {
+  const handleLoginSuccess = ({ nim: nimValue, has_voted }) => {
     setNim(nimValue);
-    setActiveTab('vote');
+    setHasVoted(Boolean(has_voted));
+    setLoginChecked(true);
+    setActiveTab(Boolean(has_voted) ? 'results' : 'vote');
   };
 
-  const handleVoteConfirm = ({ choice }) => {
+  const handleVoteConfirm = () => {
     setHasVoted(true);
     setActiveTab('results');
   };
@@ -47,7 +50,7 @@ function App() {
         )}
 
         {activeTab === 'results' && (
-          <ResultsPanel />
+          <ResultsPanel autoPoll={true} pollIntervalMs={4000} afterLoginChecked={loginChecked} />
         )}
       </main>
 

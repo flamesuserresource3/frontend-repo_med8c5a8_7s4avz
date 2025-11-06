@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { KeyRound } from 'lucide-react';
 
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || '';
+
 export default function LoginForm({ onSuccess }) {
   const [nim, setNim] = useState('');
   const [loading, setLoading] = useState(false);
@@ -9,21 +11,35 @@ export default function LoginForm({ onSuccess }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    if (!nim.trim()) {
-      setError('Please enter your NIM');
+    const trimmed = nim.trim();
+    if (!/^\d{8,15}$/.test(trimmed)) {
+      setError('Invalid NIM format. Use digits only, 8-15 characters.');
       return;
     }
-    // In the full app, this will call the backend to validate the NIM.
-    // Here we only simulate a quick client-side check for the demo UI.
+
     try {
       setLoading(true);
-      await new Promise((r) => setTimeout(r, 600));
-      // Simulate simple format check: numeric 8-12 digits
-      if (!/^\d{8,12}$/.test(nim)) {
-        setError('Invalid NIM format. Use digits only, 8-12 characters.');
+      const res = await fetch(`${BACKEND_URL}/api/voter/validate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nim: trimmed })
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || 'Failed to validate NIM');
+      }
+      const data = await res.json();
+      if (!data.eligible) {
+        setError('You are not eligible to vote.');
         return;
       }
-      onSuccess(nim.trim());
+      if (data.has_voted) {
+        onSuccess({ nim: trimmed, has_voted: true });
+        return;
+      }
+      onSuccess({ nim: trimmed, has_voted: false });
+    } catch (err) {
+      setError(err.message || 'An error occurred during validation');
     } finally {
       setLoading(false);
     }
